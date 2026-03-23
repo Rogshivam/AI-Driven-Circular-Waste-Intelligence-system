@@ -1,43 +1,116 @@
 import { motion } from "framer-motion";
 import { Home, MapPin, ClipboardList, Clock, Navigation, Truck, CheckCircle, Circle, Star, Search, Bell } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import mapImage from "@/assets/map-placeholder.png";
-
-const pickups = [
-  { name: "Pickup Points Sector 11", time: "19 mins ago", status: "Completing" },
-  { name: "Park Street 2", time: "35 mins ago", status: "Processed" },
-  { name: "Market Area 1", time: "35 mins ago", status: "Collected" },
-  { name: "Block C Apartments", time: "1 hour ago", status: "Completed" },
-];
-
-const areas = [
-  { name: "Sarangar", value: "86,199", label: "Sewer Points" },
-  { name: "Green Park", value: "93.5k", label: "Smart Bins" },
-  { name: "Pool Street", value: "23.6k", label: "Street Points" },
-  { name: "Free Mark", value: "23.6k", label: "Smart Points" },
-];
-
-const sidebarItems = [
-  { icon: Home, active: true },
-  { icon: MapPin },
-  { icon: ClipboardList },
-  { icon: Navigation },
-  { icon: Truck },
-  { icon: Clock },
-];
+import { getCollectorDashboard, updateRouteStatus } from "@/api/dashboard";
+import { useAuth } from "@/context/AuthContext";
 
 const CollectorDashboard = () => {
   const [routeStarted, setRouteStarted] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const { user, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!isAuthenticated || !user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getCollectorDashboard(user.id);
+        setDashboardData(data);
+        setRouteStarted(data.routeStarted);
+      } catch (err: any) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, isAuthenticated]);
+
+  const handleRouteToggle = async () => {
+    if (!dashboardData?.currentRoute || !user) return;
+    
+    try {
+      const newStatus = routeStarted ? 'assigned' : 'in_progress';
+      await updateRouteStatus(dashboardData.currentRoute.routeCode, newStatus);
+      
+      // Refresh dashboard data
+      const data = await getCollectorDashboard(user.id);
+      setDashboardData(data);
+      setRouteStarted(data.routeStarted);
+    } catch (err: any) {
+      console.error('Error updating route status:', err);
+      setError(err.message);
+    }
+  };
+
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Please login to access your dashboard</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="text-center glass-card-static p-6 rounded-xl max-w-md">
+          <p className="text-eco-rose mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="btn-eco"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">No dashboard data available</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-20 flex">
       <div className="hidden md:flex flex-col items-center gap-3 p-4 glass-card-static rounded-none min-h-screen w-20">
-        {sidebarItems.map((item, i) => (
-          <div key={i} className={`sidebar-icon ${item.active ? "active" : ""}`}>
-            <item.icon className="w-5 h-5" />
-          </div>
-        ))}
+        <div className="sidebar-icon active"><Home className="w-5 h-5" /></div>
+        <div className="sidebar-icon"><MapPin className="w-5 h-5" /></div>
+        <div className="sidebar-icon"><ClipboardList className="w-5 h-5" /></div>
+        <div className="sidebar-icon"><Navigation className="w-5 h-5" /></div>
+        <div className="sidebar-icon"><Truck className="w-5 h-5" /></div>
+        <div className="sidebar-icon"><Clock className="w-5 h-5" /></div>
       </div>
 
       <div className="flex-1 p-6 max-w-7xl">
@@ -64,11 +137,22 @@ const CollectorDashboard = () => {
                 <h3 className="text-lg font-semibold text-foreground">Assigned Routes</h3>
                 <span className="text-xs text-muted-foreground">210 - 2093</span>
               </div>
-              <div className="mb-3">
-                <p className="text-xl font-bold text-foreground">G-0923</p>
-                <p className="text-sm text-muted-foreground">Sector 11 · Sector 12</p>
-                <span className="status-green mt-2 inline-block">8:00 AM - 11:10 AM</span>
-              </div>
+              {dashboardData.currentRoute ? (
+                <>
+                  <div className="mb-3">
+                    <p className="text-xl font-bold text-foreground">{dashboardData.currentRoute.routeCode}</p>
+                    <p className="text-sm text-muted-foreground">{dashboardData.currentRoute.areas}</p>
+                    <span className="status-green mt-2 inline-block">
+                      {new Date(dashboardData.currentRoute.scheduledStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(dashboardData.currentRoute.scheduledEnd).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="mb-3">
+                  <p className="text-xl font-bold text-foreground">No Route Assigned</p>
+                  <p className="text-sm text-muted-foreground">Check back later for route assignments</p>
+                </div>
+              )}
               <div className="rounded-xl overflow-hidden mb-3">
                 <img src={mapImage} alt="Route map" className="w-full h-56 object-cover rounded-xl" />
               </div>
@@ -83,7 +167,7 @@ const CollectorDashboard = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Star className="w-4 h-4 text-eco-amber" />
-                  <span className="text-sm font-semibold text-foreground">30</span>
+                  <span className="text-sm font-semibold text-foreground">{dashboardData.rewardPoints}</span>
                 </div>
               </div>
             </div>
@@ -94,7 +178,13 @@ const CollectorDashboard = () => {
                 <div className="rounded-xl overflow-hidden mb-3">
                   <img src={mapImage} alt="Navigation" className="w-full h-36 object-cover rounded-xl" />
                 </div>
-                <button onClick={() => setRouteStarted(!routeStarted)} className={`w-full text-center py-3 rounded-xl font-semibold text-sm transition-all ${routeStarted ? "bg-eco-rose/10 text-eco-rose border border-eco-rose/30" : "btn-eco"}`}>
+                <button 
+                  onClick={handleRouteToggle}
+                  disabled={!dashboardData.currentRoute}
+                  className={`w-full text-center py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    routeStarted ? "bg-eco-rose/10 text-eco-rose border border-eco-rose/30" : "btn-eco"
+                  }`}
+                >
                   {routeStarted ? "Stop Route" : "Start Route"}
                 </button>
               </div>
@@ -104,7 +194,7 @@ const CollectorDashboard = () => {
                   <h3 className="text-lg font-semibold text-foreground">Today's Task List</h3>
                 </div>
                 <div className="space-y-3">
-                  {pickups.map((p, i) => (
+                  {dashboardData.pickups.map((p, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {p.status === "Completed" || p.status === "Completing" ? (
@@ -133,8 +223,8 @@ const CollectorDashboard = () => {
                 <span className="text-xs text-muted-foreground">Rot: Lajpat Nagar</span>
               </div>
               <div className="grid grid-cols-4 gap-4">
-                {areas.map(a => (
-                  <div key={a.name} className="text-center">
+                {dashboardData.areas.map((a, i) => (
+                  <div key={i} className="text-center">
                     <span className="status-green text-xs mb-2 inline-block">{a.name}</span>
                     <p className="stat-value text-xl">{a.value}</p>
                     <p className="stat-label">{a.label}</p>
@@ -147,7 +237,7 @@ const CollectorDashboard = () => {
             <div className="lg:col-span-2 glass-card-static p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-foreground">Reward Points</h3>
-                <span className="text-lg font-bold text-primary">435</span>
+                <span className="text-lg font-bold text-primary">{dashboardData.rewardPoints}</span>
               </div>
               <div className="glass-card-static p-4 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-eco-teal flex items-center justify-center">

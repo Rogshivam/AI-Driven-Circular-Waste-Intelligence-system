@@ -5,28 +5,7 @@ import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import mapImage from "@/assets/map-placeholder.png";
 import heatmapImage from "@/assets/heatmap-placeholder.png";
-
-const pieData = [
-  { name: "Dry", value: 48, color: "hsl(155, 65%, 42%)" },
-  { name: "Wet", value: 41, color: "hsl(175, 55%, 45%)" },
-  { name: "Hazardous", value: 11, color: "hsl(350, 70%, 58%)" },
-];
-
-const areaData = [
-  { month: "Jan", pickups: 2100, complaints: 180 },
-  { month: "Feb", pickups: 2400, complaints: 150 },
-  { month: "Mar", pickups: 2800, complaints: 120 },
-  { month: "Apr", pickups: 3100, complaints: 90 },
-  { month: "May", pickups: 3400, complaints: 75 },
-  { month: "Jun", pickups: 3200, complaints: 85 },
-];
-
-const complaints = [
-  { sector: "Sector 11", time: "Just now", status: "Resolved" },
-  { sector: "Green Park", time: "15 mins ago", status: "In Progress" },
-  { sector: "Lajpat Nagar", time: "32 mins ago", status: "Pending" },
-  { sector: "Mayur Vihar", time: "1 hour ago", status: "Resolved" },
-];
+import { useDashboard } from "@/context/DashboardContext";
 
 const sidebarItems = [
   { icon: Home, label: "Dashboard", active: true },
@@ -40,6 +19,46 @@ const sidebarItems = [
 
 const AdminDashboard = () => {
   const [activeTab] = useState(0);
+  const { data, complaints, loading, error } = useDashboard();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="text-center glass-card-static p-6 rounded-xl max-w-md">
+          <AlertTriangle className="w-12 h-12 text-eco-rose mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">Failed to Load Dashboard</h3>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="btn-eco"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">No dashboard data available</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-20 flex">
@@ -75,20 +94,20 @@ const AdminDashboard = () => {
             <div className="lg:col-span-3 glass-card-static p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">City Overview</h3>
-                <span className="text-xs text-muted-foreground">1110 - 30%</span>
+                <span className="text-xs text-muted-foreground">{data.stats?.totalCollections || 0} collections</span>
               </div>
               <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="w-48 h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={pieData} innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                        {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                      <Pie data={data.pieData} innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
+                        {data.pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
                 <div className="space-y-3">
-                  {pieData.map(d => (
+                  {data.pieData.map(d => (
                     <div key={d.name} className="flex items-center gap-3">
                       <span className="text-2xl font-bold" style={{ color: d.color }}>{d.value}%</span>
                       <span className="text-sm text-foreground">{d.name}</span>
@@ -97,9 +116,9 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4 mt-5 pt-4 border-t border-border">
-                <div><p className="stat-value">109.2k</p><p className="stat-label">Dry Waste</p></div>
-                <div><p className="stat-value">93.5k</p><p className="stat-label">Wet Waste</p></div>
-                <div><p className="stat-value">23.6k</p><p className="stat-label">Hazardous</p></div>
+                <div><p className="stat-value">{data.pieData?.find(d => d.name === 'Dry')?.value || 0}%</p><p className="stat-label">Dry Waste</p></div>
+                <div><p className="stat-value">{data.pieData?.find(d => d.name === 'Wet')?.value || 0}%</p><p className="stat-label">Wet Waste</p></div>
+                <div><p className="stat-value">{data.pieData?.find(d => d.name === 'Hazardous')?.value || 0}%</p><p className="stat-label">Hazardous</p></div>
               </div>
             </div>
 
@@ -107,14 +126,16 @@ const AdminDashboard = () => {
             <div className="lg:col-span-2 glass-card-static p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-foreground">Complaints Heatmap</h3>
-                <span className="status-green">Low</span>
+                <span className={data.stats?.pendingComplaints > 10 ? "status-amber" : "status-green"}>
+                  {data.stats?.pendingComplaints > 10 ? "High" : "Low"}
+                </span>
               </div>
               <div className="rounded-xl overflow-hidden">
                 <img src={heatmapImage} alt="Complaints heatmap" className="w-full h-48 object-cover rounded-xl" />
               </div>
               <div className="flex items-center justify-end gap-2 mt-3">
                 <CheckCircle className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">20</span>
+                <span className="text-sm font-semibold text-foreground">{complaints?.length || 0}</span>
               </div>
             </div>
 
@@ -123,7 +144,7 @@ const AdminDashboard = () => {
               <h3 className="text-lg font-semibold text-foreground mb-4">Garbage Collection Progress</h3>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={areaData}>
+                  <AreaChart data={data.areaData}>
                     <defs>
                       <linearGradient id="pickupGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="hsl(155, 65%, 42%)" stopOpacity={0.3} />
@@ -138,9 +159,9 @@ const AdminDashboard = () => {
                 </ResponsiveContainer>
               </div>
               <div className="grid grid-cols-3 gap-4 mt-4 pt-3 border-t border-border">
-                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-primary" /><span className="stat-value text-xl">86,199</span></div>
-                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-eco-amber" /><span className="stat-value text-xl">93.5k</span></div>
-                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-eco-rose" /><span className="stat-value text-xl">23.6k</span></div>
+                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-primary" /><span className="stat-value text-xl">{data.areaData?.reduce((sum, d) => sum + d.pickups, 0).toLocaleString() || 0}</span></div>
+                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-eco-amber" /><span className="stat-value text-xl">{data.stats?.activeCollectors || 0}</span></div>
+                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-eco-rose" /><span className="stat-value text-xl">{data.stats?.pendingComplaints || 0}</span></div>
               </div>
             </div>
 
@@ -163,7 +184,7 @@ const AdminDashboard = () => {
                 <button className="text-sm text-primary hover:underline flex items-center gap-1">View All <ChevronRight className="w-4 h-4" /></button>
               </div>
               <div className="space-y-3">
-                {complaints.map((c, i) => (
+                {complaints?.map((c, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                     <div className="flex items-center gap-3">
                       <AlertTriangle className={`w-4 h-4 ${c.status === "Resolved" ? "text-primary" : c.status === "In Progress" ? "text-eco-amber" : "text-eco-rose"}`} />
