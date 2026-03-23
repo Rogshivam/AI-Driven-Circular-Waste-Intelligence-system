@@ -63,11 +63,11 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-gray-300;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-white text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
     background: var(--gradient-bg);
     min-height: 100vh;

@@ -40,7 +40,7 @@ const Navbar = ({ isLoggedIn, userRole, onLoginClick, onLogout }: NavbarProps) =
         <div className="hidden md:flex items-center gap-8">
           <button onClick={() => handleNavClick("hero")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Home</button>
           <button onClick={() => handleNavClick("features")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Features</button>
-          <button onClick={() => handleNavClick("dashboards")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Dashboards</button>
+          {/* <button onClick={() => handleNavClick("dashboards")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Dashboards</button> */}
           <Link to="/community" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Community</Link>
           <Link to="/rewards" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Rewards</Link>
         </div>
@@ -88,7 +88,7 @@ const Navbar = ({ isLoggedIn, userRole, onLoginClick, onLogout }: NavbarProps) =
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="md:hidden mt-3 pb-4 flex flex-col gap-2">
             <button onClick={() => handleNavClick("hero")} className="px-4 py-2 text-sm text-left text-foreground hover:bg-accent rounded-lg">Home</button>
             <button onClick={() => handleNavClick("features")} className="px-4 py-2 text-sm text-left text-foreground hover:bg-accent rounded-lg">Features</button>
-            <button onClick={() => handleNavClick("dashboards")} className="px-4 py-2 text-sm text-left text-foreground hover:bg-accent rounded-lg">Dashboards</button>
+            {/* <button onClick={() => handleNavClick("dashboards")} className="px-4 py-2 text-sm text-left text-foreground hover:bg-accent rounded-lg">Dashboards</button> */}
             <Link to="/community" className="px-4 py-2 text-sm text-foreground hover:bg-accent rounded-lg" onClick={() => setMobileOpen(false)}>Community</Link>
             <Link to="/rewards" className="px-4 py-2 text-sm text-foreground hover:bg-accent rounded-lg" onClick={() => setMobileOpen(false)}>Rewards</Link>
             {!isLoggedIn && <button onClick={() => { onLoginClick(); setMobileOpen(false); }} className="btn-eco text-sm mx-4">Login</button>}

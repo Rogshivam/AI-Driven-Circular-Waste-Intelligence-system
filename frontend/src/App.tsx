@@ -15,34 +15,40 @@ import CommunityPage from "./pages/CommunityPage";
 import RewardsPage from "./pages/RewardsPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
+import { DashboardProvider } from "./context/DashboardContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   const [loginOpen, setLoginOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (role: string) => {
-    setIsLoggedIn(true);
-    setUserRole(role);
+  const handleLoginSuccess = () => {
     setLoginOpen(false);
-    if (role === "admin") navigate("/dashboard/admin");
-    else if (role === "collector") navigate("/dashboard/collector");
-    else navigate("/dashboard/citizen");
+    if (user) {
+      if (user.role === "admin") navigate("/dashboard/admin");
+      else if (user.role === "collector") navigate("/dashboard/collector");
+      else navigate("/dashboard/citizen");
+    }
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserRole(null);
+    logout();
     navigate("/");
   };
 
   return (
     <>
-      <Navbar isLoggedIn={isLoggedIn} userRole={userRole} onLoginClick={() => setLoginOpen(true)} onLogout={handleLogout} />
-      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} onLogin={handleLogin} />
+    <DashboardProvider user={user} isAuthenticated={isAuthenticated}>
+      <Navbar 
+        isLoggedIn={isAuthenticated} 
+        userRole={user?.role || null} 
+        onLoginClick={() => setLoginOpen(true)} 
+        onLogout={handleLogout} 
+      />
+      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} onLoginSuccess={handleLoginSuccess} />
       <Toaster />
       <Sonner />
       <Routes>
@@ -53,9 +59,10 @@ const AppContent = () => {
         <Route path="/classifier" element={<ClassifierPage />} />
         <Route path="/community" element={<CommunityPage />} />
         <Route path="/rewards" element={<RewardsPage />} />
-        <Route path="/profile" element={<ProfilePage userRole={userRole} />} />
+        <Route path="/profile" element={<ProfilePage userRole={user?.role || null} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </DashboardProvider>
     </>
   );
 };
@@ -64,7 +71,9 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BrowserRouter>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
