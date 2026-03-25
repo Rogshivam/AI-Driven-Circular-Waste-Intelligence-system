@@ -37,11 +37,15 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Create user
     const user = await User.create({
       username,
       email,
-      password,
+      password: hashedPassword,
       role,
       profile: profile || {},
       rewardPoints: role === 'citizen' ? 0 : 0,
@@ -148,23 +152,49 @@ router.post('/login', async (req, res) => {
 // @desc    Get current user
 router.get('/me', async (req, res) => {
   try {
-    // This would normally use JWT middleware
-    // For now, return mock data
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No token provided'
+      });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Get user from database
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
     res.status(200).json({
       success: true,
       data: {
         user: {
-          id: 'mock_user_id',
-          username: 'mock_user',
-          email: 'mock@example.com',
-          role: 'citizen',
-          profile: {},
-          rewardPoints: 100,
-          level: 1
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          profile: user.profile,
+          rewardPoints: user.rewardPoints,
+          level: user.level
         }
       }
     });
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
+    }
     console.error('Get user error:', error);
     res.status(500).json({
       success: false,

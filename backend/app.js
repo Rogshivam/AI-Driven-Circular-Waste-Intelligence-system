@@ -24,6 +24,10 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/citizen', require('./routes/citizen'));
 app.use('/api/collector', require('./routes/collector'));
+app.use('/api/tracking', require('./routes/tracking'));
+app.use('/api/leaderboard', require('./routes/leaderboard'));
+app.use('/api/grievance', require('./routes/grievance'));
+app.use('/api/profile', require('./routes/profile'));
 
 // Health check
 app.get('/api/health', (req, res) => {

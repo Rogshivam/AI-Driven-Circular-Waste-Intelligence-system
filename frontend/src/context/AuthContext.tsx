@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, login as loginApi, register as registerApi } from '@/api/auth';
+import { User, login as loginApi, register as registerApi, getCurrentUser } from '@/api/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -36,25 +36,62 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing token on mount
+  // ✅ Validate token on refresh
   useEffect(() => {
-    const savedToken = localStorage.getItem('wastewise_token');
-    if (savedToken) {
-      setToken(savedToken);
-      // You could validate the token here by calling getCurrentUser
-    }
-    setIsLoading(false);
+    const validateToken = async () => {
+      const savedToken = localStorage.getItem('wastewise_token');
+      const savedUser = localStorage.getItem('wastewise_user');
+
+      if (savedToken && savedUser) {
+        try {
+          let parsedUser: User;
+
+          try {
+            parsedUser = JSON.parse(savedUser);
+          } catch {
+            throw new Error("Invalid stored user");
+          }
+
+          // ✅ Load from cache first
+          setToken(savedToken);
+          setUser(parsedUser);
+
+          // ✅ Validate with backend
+          const currentUser = await getCurrentUser(savedToken);
+
+          if (currentUser?.id === parsedUser.id) {
+            setUser(currentUser);
+            localStorage.setItem('wastewise_user', JSON.stringify(currentUser));
+          } else {
+            throw new Error("User mismatch");
+          }
+
+        } catch (error) {
+          console.error('Token validation failed:', error);
+
+          setUser(null);
+          setToken(null);
+          localStorage.removeItem('wastewise_token');
+          localStorage.removeItem('wastewise_user');
+        }
+      }
+
+      setIsLoading(false);
+    };
+
+    validateToken();
   }, []);
 
   const login = async (email: string, password: string, role: 'admin' | 'citizen' | 'collector') => {
     try {
       setIsLoading(true);
       const response = await loginApi({ email, password, role });
-      
+
       if (response.success) {
         setUser(response.data.user);
         setToken(response.data.token);
         localStorage.setItem('wastewise_token', response.data.token);
+        localStorage.setItem('wastewise_user', JSON.stringify(response.data.user));
       } else {
         throw new Error('Login failed');
       }
@@ -76,11 +113,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setIsLoading(true);
       const response = await registerApi(userData);
-      
+
       if (response.success) {
         setUser(response.data.user);
         setToken(response.data.token);
         localStorage.setItem('wastewise_token', response.data.token);
+        localStorage.setItem('wastewise_user', JSON.stringify(response.data.user));
       } else {
         throw new Error('Registration failed');
       }
@@ -96,9 +134,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('wastewise_token');
+    localStorage.removeItem('wastewise_user');
   };
 
-  const isAuthenticated = !!user && !!token;
+  // ✅ Prevent flicker
+  const isAuthenticated = !!user && !!token && !isLoading;
 
   const value: AuthContextType = {
     user,

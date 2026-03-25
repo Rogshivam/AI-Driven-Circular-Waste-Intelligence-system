@@ -17,6 +17,8 @@ import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import { DashboardProvider } from "./context/DashboardContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import LeaderboardPage from "./pages/LeaderboardPage";
+import LiveTrackingPage from "./pages/LiveTrackingPage";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +61,10 @@ const AppContent = () => {
         <Route path="/classifier" element={<ClassifierPage />} />
         <Route path="/community" element={<CommunityPage />} />
         <Route path="/rewards" element={<RewardsPage />} />
+                <Route path="/tracking" element={<LiveTrackingPage />} />
+                
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+
         <Route path="/profile" element={<ProfilePage userRole={user?.role || null} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
