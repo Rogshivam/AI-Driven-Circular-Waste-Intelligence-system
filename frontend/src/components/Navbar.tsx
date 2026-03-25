@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, LogOut, Settings, Bell } from "lucide-react";
+import { Menu, X, User, LogOut, Settings, Bell, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface NavbarProps {
@@ -26,6 +26,12 @@ const Navbar = ({ isLoggedIn, userRole, onLoginClick, onLogout }: NavbarProps) =
       navigate("/", { state: { scrollTo: target } });
     }
   };
+  const getDashboardLink = () => {
+    if (!isLoggedIn) return "/";
+    if (userRole === "admin") return "/dashboard/admin";
+    if (userRole === "collector") return "/dashboard/collector";
+    return "/dashboard/citizen";
+  };
 
   return (
     <nav className="glass-nav fixed top-0 left-0 right-0 z-50 px-6 py-3">
@@ -43,6 +49,8 @@ const Navbar = ({ isLoggedIn, userRole, onLoginClick, onLogout }: NavbarProps) =
           {/* <button onClick={() => handleNavClick("dashboards")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Dashboards</button> */}
           <Link to="/community" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Community</Link>
           <Link to="/rewards" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Rewards</Link>
+          <Link to="/leaderboard" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Leaderboard</Link>
+
         </div>
 
         <div className="hidden md:flex items-center gap-3">
@@ -60,11 +68,14 @@ const Navbar = ({ isLoggedIn, userRole, onLoginClick, onLogout }: NavbarProps) =
                     <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent rounded-lg transition-colors" onClick={() => setProfileOpen(false)}>
                       <User className="w-4 h-4" /> My Profile
                     </Link>
-                    <Link to="/settings" className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent rounded-lg transition-colors" onClick={() => setProfileOpen(false)}>
-                      <Settings className="w-4 h-4" /> Settings
+                    <Link to={getDashboardLink()} className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent rounded-lg transition-colors" onClick={() => setProfileOpen(false)}>
+                      <Settings className="w-4 h-4" /> Dashboard
                     </Link>
-                    <Link to="/notifications" className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent rounded-lg transition-colors" onClick={() => setProfileOpen(false)}>
-                      <Bell className="w-4 h-4" /> Notifications
+                    <Link to="/leaderboard" className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent rounded-lg transition-colors" onClick={() => setProfileOpen(false)}>
+                      <Trophy className="w-4 h-4" /> Leaderboard
+                    </Link>
+                    <Link to="/tracking" className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent rounded-lg transition-colors" onClick={() => setProfileOpen(false)}>
+                      <Bell className="w-4 h-4" /> Live Tracking
                     </Link>
                     <button onClick={() => { onLogout(); setProfileOpen(false); }} className="flex items-center gap-2 px-3 py-2 text-sm text-eco-rose hover:bg-accent rounded-lg transition-colors w-full">
                       <LogOut className="w-4 h-4" /> Logout
@@ -91,6 +102,8 @@ const Navbar = ({ isLoggedIn, userRole, onLoginClick, onLogout }: NavbarProps) =
             {/* <button onClick={() => handleNavClick("dashboards")} className="px-4 py-2 text-sm text-left text-foreground hover:bg-accent rounded-lg">Dashboards</button> */}
             <Link to="/community" className="px-4 py-2 text-sm text-foreground hover:bg-accent rounded-lg" onClick={() => setMobileOpen(false)}>Community</Link>
             <Link to="/rewards" className="px-4 py-2 text-sm text-foreground hover:bg-accent rounded-lg" onClick={() => setMobileOpen(false)}>Rewards</Link>
+            <Link to="/leaderboard" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Leaderboard</Link>
+
             {!isLoggedIn && <button onClick={() => { onLoginClick(); setMobileOpen(false); }} className="btn-eco text-sm mx-4">Login</button>}
           </motion.div>
         )}
