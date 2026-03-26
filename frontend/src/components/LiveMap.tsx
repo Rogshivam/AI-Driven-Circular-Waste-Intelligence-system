@@ -411,7 +411,7 @@ const LiveMap = ({ collectorMode = false }: { collectorMode?: boolean }) => {
     }
   };
 
-  const updateRouteDisplay = (route: OptimizedRoute) => {
+  const updateRouteDisplay = async (route: OptimizedRoute) => {
     if (!mapInstance.current) return;
 
     // Clear existing route line
@@ -420,20 +420,50 @@ const LiveMap = ({ collectorMode = false }: { collectorMode?: boolean }) => {
       routeLine.current = null;
     }
 
-    // Draw optimized route
-    if (route.waypoints.length > 0) {
-      const coordinates = route.waypoints.map(wp => [wp.coordinates[1], wp.coordinates[0]] as [number, number]);
-      
+    if (!route.waypoints || route.waypoints.length < 2) return;
+
+    const coords = route.waypoints
+      .map((wp) => `${wp.coordinates[0]},${wp.coordinates[1]}`)
+      .join(';');
+
+    try {
+      const res = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`
+      );
+
+      if (!res.ok) {
+        throw new Error(`OSRM request failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (data.routes && data.routes.length > 0 && data.routes[0]?.geometry?.coordinates) {
+        const routeGeo = data.routes[0].geometry;
+        const leafletCoords = routeGeo.coordinates.map(
+          (c: [number, number]) => [c[1], c[0]] as [number, number]
+        );
+
+        routeLine.current = L.polyline(leafletCoords, {
+          color: '#10b981',
+          weight: 5,
+          opacity: 0.9
+        }).addTo(mapInstance.current);
+
+        mapInstance.current.fitBounds(routeLine.current.getBounds(), { padding: [50, 50] });
+      }
+    } catch (err) {
+      console.error("Routing error:", err);
+
+      // Fallback to direct polyline if OSRM is unavailable.
+      const coordinates = route.waypoints.map(
+        (wp) => [wp.coordinates[1], wp.coordinates[0]] as [number, number]
+      );
       routeLine.current = L.polyline(coordinates, {
         color: '#10b981',
-        weight: 4,
-        opacity: 0.7,
-        dashArray: '10, 10'
+        weight: 5,
+        opacity: 0.9
       }).addTo(mapInstance.current);
-
-      // Fit map to show entire route
-      const bounds = L.latLngBounds(coordinates);
-      mapInstance.current.fitBounds(bounds, { padding: [50, 50] });
+      mapInstance.current.fitBounds(routeLine.current.getBounds(), { padding: [50, 50] });
     }
   };
 
